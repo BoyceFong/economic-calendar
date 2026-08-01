@@ -12,6 +12,11 @@ data/*.log
 data/*.html
 data/*.tmp
 
+# PyInstaller build artifacts
+build/
+dist/
+*.spec.bak
+
 # 设计稿 / 预检产物(非项目运行所需)
 economic-calendar-widget-ui/
 

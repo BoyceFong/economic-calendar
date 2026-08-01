@@ -7,6 +7,7 @@ properly clipped children. Single-layer architecture (no inner QFrame).
 from __future__ import annotations
 
 import logging
+import math
 from datetime import datetime
 from typing import Any
 
@@ -51,7 +52,7 @@ COLUMNS = ["TIME", "CUR", "IMP", "EVENT", "ACTUAL", "FORECAST", "PREVIOUS"]
 # CUR:  flag emoji + 2-char country code + pad
 # IMP:  centered dot icon
 # ACTUAL/FORECAST/PREVIOUS: numeric values like "6,738B", "2.993M" + header text
-COL_WIDTHS = [60, 64, 36, 0, 76, 86, 80]
+COL_WIDTHS = [60, 64, 50, 0, 76, 86, 80]
 _EVENT_MIN_WIDTH = 80
 # Sum of fixed column widths
 _FIXED_COLS_SUM = sum(w for w in COL_WIDTHS if w > 0)
@@ -71,8 +72,9 @@ _IMP_LOW = QColor(180, 180, 185)
 _IMP_MED = QColor(255, 149, 0)
 _IMP_HIGH = QColor(255, 59, 48)
 
-_ROW_HEIGHT_SINGLE = 38
-_ROW_HEIGHT_DOUBLE = 52
+_ROW_HEIGHT_SINGLE = 40
+_ROW_HEIGHT_DOUBLE = 62
+_ROW_HEIGHT_TRIPLE = 86
 
 _BG_CARD = QColor(250, 250, 252)
 _BG_ROW_ALT = QColor(246, 246, 249)
@@ -141,23 +143,47 @@ def _try_float(text: str | None) -> float | None:
         return None
 
 
-def _make_dot_pixmap(level: ImportanceLevel, size: int = 10) -> QPixmap:
-    pm = QPixmap(size, size)
-    pm.fill(Qt.GlobalColor.transparent)
-    p = QPainter(pm)
-    p.setRenderHint(QPainter.RenderHint.Antialiasing)
+def _make_star_path(cx: float, cy: float, r: float) -> QPainterPath:
+    """Create a 5-point star path centered at (cx, cy) with radius r."""
+    path = QPainterPath()
+    for i in range(10):
+        angle = -math.pi / 2 + i * math.pi / 5
+        radius = r if i % 2 == 0 else r * 0.4
+        x = cx + radius * math.cos(angle)
+        y = cy + radius * math.sin(angle)
+        if i == 0:
+            path.moveTo(x, y)
+        else:
+            path.lineTo(x, y)
+    path.closeSubpath()
+    return path
+
+
+def _make_stars_pixmap(level: ImportanceLevel, star_size: int = 13, gap: int = 2) -> QPixmap:
+    """Create a pixmap with 1-3 filled stars showing importance level.
+
+    Uses the same color scheme as investing.com:
+      - 1 star (LOW): gray
+      - 2 stars (MEDIUM): orange
+      - 3 stars (HIGH): red
+    """
+    count = int(level)  # 1, 2, or 3
     color = _IMP_HIGH if level is ImportanceLevel.HIGH else (
         _IMP_MED if level is ImportanceLevel.MEDIUM else _IMP_LOW
     )
-    cx = cy = size / 2.0
-    r = (size - 2) / 2.0
-    if level is ImportanceLevel.LOW:
-        p.setPen(QPen(color, 1.4))
-        p.setBrush(Qt.BrushStyle.NoBrush)
-    else:
-        p.setPen(Qt.PenStyle.NoPen)
-        p.setBrush(color)
-    p.drawEllipse(QPointF(cx, cy), r, r)
+    total_w = count * star_size + (count - 1) * gap
+    pm = QPixmap(total_w, star_size)
+    pm.fill(Qt.GlobalColor.transparent)
+    p = QPainter(pm)
+    p.setRenderHint(QPainter.RenderHint.Antialiasing)
+    p.setPen(Qt.PenStyle.NoPen)
+    p.setBrush(color)
+    r = star_size / 2.0 - 1
+    for i in range(count):
+        cx = r + 1 + i * (star_size + gap)
+        cy = star_size / 2.0
+        path = _make_star_path(cx, cy, r)
+        p.drawPath(path)
     p.end()
     return pm
 
@@ -245,16 +271,14 @@ class EventRowDelegate(QStyledItemDelegate):
     def _paint_event_text(self, painter: QPainter, opt: QStyleOptionViewItem, idx: QModelIndex) -> None:
         text = idx.data(Qt.ItemDataRole.DisplayRole) or ""
         painter.save()
-        # Clip to cell rect
         painter.setClipRect(opt.rect)
-        # Font
         font = QFont(self._table.font())
         painter.setFont(font)
         painter.setPen(_TEXT_PRIMARY)
-        # Text layout rect (with 8px padding)
         pad = 8
-        text_rect = opt.rect.adjusted(pad, 0, -pad, 0)
-        # Draw with word wrap, max 2 lines
+        # Vertical padding (6px top/bottom) to prevent text from looking cramped,
+        # especially when wrapping to 2-3 lines.
+        text_rect = opt.rect.adjusted(pad, 6, -pad, -6)
         to = QTextOption()
         to.setWrapMode(QTextOption.WrapMode.WordWrap)
         to.setAlignment(Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignLeft)
@@ -276,13 +300,12 @@ class EventRowDelegate(QStyledItemDelegate):
         painter.restore()
 
     def _paint_imp_dot(self, painter: QPainter, opt: QStyleOptionViewItem, idx: QModelIndex) -> None:
-        """Center the importance dot icon in the cell."""
+        """Center the importance stars icon in the cell."""
         icon = idx.data(Qt.ItemDataRole.DecorationRole)
         if icon is None:
             return
         painter.save()
-        # Get icon size
-        pm = icon.pixmap(QSize(12, 12))
+        pm = icon.pixmap(QSize(48, 16))
         r = opt.rect
         x = r.x() + (r.width() - pm.width()) // 2
         y = r.y() + (r.height() - pm.height()) // 2
@@ -529,7 +552,7 @@ class EconomicCalendarWidget(QWidget):
         vh = t.verticalHeader()
         vh.setDefaultSectionSize(_ROW_HEIGHT_SINGLE)
         vh.setMinimumSectionSize(_ROW_HEIGHT_SINGLE)
-        vh.setMaximumSectionSize(_ROW_HEIGHT_DOUBLE)
+        vh.setMaximumSectionSize(_ROW_HEIGHT_TRIPLE)
 
         # Header
         hh = t.horizontalHeader()
@@ -852,6 +875,14 @@ class EconomicCalendarWidget(QWidget):
         a.triggered.connect(self._toggle_aot)
         menu.addAction(a)
         menu.addSeparator()
+
+        # Auto-start toggle (only meaningful in packaged mode)
+        import autostart
+        autostart_enabled = autostart.is_autostart_enabled()
+        a = QAction("  Launch at Login: " + ("On" if autostart_enabled else "Off"), menu)
+        a.triggered.connect(self._toggle_autostart)
+        menu.addAction(a)
+
         a = QAction("  Quit", menu)
         a.triggered.connect(QApplication.quit)
         menu.addAction(a)
@@ -863,16 +894,15 @@ class EconomicCalendarWidget(QWidget):
     def _recalc_row_heights(self) -> None:
         """Calculate row heights based on EVENT column text length.
 
-        Single-line rows get _ROW_HEIGHT_SINGLE; rows with long event names
-        that would wrap get _ROW_HEIGHT_DOUBLE. Called after refresh and
-        after window resize (debounced).
+        Uses QTextLayout to precisely measure how many lines the text will wrap
+        into, then assigns the appropriate row height. This avoids both
+        truncation and visual cramping.
         """
         t = self.table
         if t.rowCount() == 0:
             return
         fm = QFontMetrics(t.font())
         col_event = 3
-        # Available width for EVENT column = viewport width minus all fixed columns
         fixed_sum = sum(t.columnWidth(i) for i in range(len(COLUMNS)) if COL_WIDTHS[i] > 0 and i != col_event)
         event_w = t.viewport().width() - fixed_sum
         event_w = max(event_w, 50)
@@ -884,13 +914,21 @@ class EconomicCalendarWidget(QWidget):
                 continue
             text = item.text()
             pad = 16  # 8px padding each side
-            text_w = fm.horizontalAdvance(text)
-            if text_w > event_w - pad:
+            avail_w = event_w - pad
+            if avail_w <= 0:
+                t.setRowHeight(row, _ROW_HEIGHT_TRIPLE)
+                continue
+            # Use boundingRect to count actual wrapped lines
+            flags = int(Qt.TextFlag.TextWordWrap)
+            text_rect = fm.boundingRect(0, 0, avail_w, 1000, flags, text)
+            line_count = max(1, text_rect.height() // fm.lineSpacing())
+            if line_count <= 1:
+                t.setRowHeight(row, _ROW_HEIGHT_SINGLE)
+            elif line_count == 2:
                 t.setRowHeight(row, _ROW_HEIGHT_DOUBLE)
             else:
-                t.setRowHeight(row, _ROW_HEIGHT_SINGLE)
+                t.setRowHeight(row, _ROW_HEIGHT_TRIPLE)
 
-        # After heights change, update NOW indicator position
         self._update_now()
 
     # ── Data ─────────────────────────────────────────────────────────
@@ -953,9 +991,9 @@ class EconomicCalendarWidget(QWidget):
                     it.setTextAlignment(Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignCenter)
                     it.setToolTip(ev.currency)
                 elif col == 2:
-                    it.setIcon(QIcon(_make_dot_pixmap(ev.importance)))
+                    it.setIcon(QIcon(_make_stars_pixmap(ev.importance)))
                     it.setTextAlignment(Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignCenter)
-                    it.setSizeHint(QSize(28, _ROW_HEIGHT_SINGLE))
+                    it.setSizeHint(QSize(48, _ROW_HEIGHT_SINGLE))
                 elif col == 3:
                     it.setForeground(_TEXT_PRIMARY)
                     it.setTextAlignment(Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignLeft)
@@ -1032,7 +1070,12 @@ class EconomicCalendarWidget(QWidget):
         self._set_status(f"Copied: {ev.name[:45]}")
 
     def _open_browser(self, row: int = -1) -> None:
-        QDesktopServices.openUrl(QUrl("https://www.investing.com/economic-calendar/"))
+        url = "https://www.investing.com/economic-calendar/"
+        if 0 <= row < len(self._events):
+            ev = self._events[row]
+            if ev.source_url:
+                url = ev.source_url
+        QDesktopServices.openUrl(QUrl(url))
         self._set_status("Opened in browser")
 
     def _set_status(self, text: str) -> None:
@@ -1072,6 +1115,11 @@ class EconomicCalendarWidget(QWidget):
         self.setWindowFlags(fl)
         self.show()
         self._set_status(f"Always on Top: {'On' if self._always_on_top else 'Off'}")
+
+    def _toggle_autostart(self) -> None:
+        import autostart
+        new_state = autostart.toggle_autostart()
+        self._set_status(f"Launch at Login: {'On' if new_state else 'Off'}")
 
     def persist_geometry(self) -> None:
         try:

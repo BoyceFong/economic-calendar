@@ -136,12 +136,14 @@ EXTRACT_JS = r"""
         }
         if (countryCode === 'EUR') countryCode = 'EU';
 
-        // Event name from <a> in cell[3]
+        // Event name and URL from <a> in cell[3]
         const evCell = tds[3];
         let eventName = '';
+        let eventUrl = '';
         const eventLink = evCell ? evCell.querySelector('a') : null;
         if (eventLink) {
             eventName = (eventLink.textContent || '').trim();
+            eventUrl = eventLink.getAttribute('href') || '';
         }
         if (!eventName && evCell) {
             const fullText = (evCell.textContent || '').trim();
@@ -149,6 +151,10 @@ EXTRACT_JS = r"""
             eventName = actIdx > 0 ? fullText.substring(0, actIdx).trim() : fullText;
         }
         eventName = eventName.replace(/\s+/g, ' ').trim();
+        // Make URL absolute if relative
+        if (eventUrl && !eventUrl.startsWith('http')) {
+            eventUrl = 'https://www.investing.com' + (eventUrl.startsWith('/') ? '' : '/') + eventUrl;
+        }
 
         // Importance: count filled (opacity-60) stars in cell[4]
         const impCell = tds[4];
@@ -196,6 +202,7 @@ EXTRACT_JS = r"""
                 countryCode: countryCode,
                 bull: bullCount,
                 name: eventName,
+                url: eventUrl,
                 actual: actual,
                 forecast: forecast,
                 previous: previous,
@@ -295,6 +302,7 @@ def _parse_row(row: dict[str, Any]) -> EconomicEvent | None:
         actual=row.get("actual"),
         forecast=row.get("forecast"),
         previous=row.get("previous"),
+        source_url=row.get("url", ""),
     )
 
 
@@ -329,6 +337,13 @@ class EconomicCalendarFetcher:
         except ImportError as exc:
             logger.error("playwright not installed: %s", exc)
             return []
+
+        # Use bundled Playwright browsers when running from .app bundle
+        import paths
+        if paths.is_frozen():
+            browsers_dir = paths.app_dir() / "playwright_browsers"
+            if browsers_dir.exists():
+                os.environ["PLAYWRIGHT_BROWSERS_PATH"] = str(browsers_dir)
 
         start = time.monotonic()
         events: list[EconomicEvent] = []
@@ -405,15 +420,17 @@ class EconomicCalendarFetcher:
 
                 if raw_rows and raw_count > 0:
                     for i, r in enumerate(raw_rows[:5]):
-                        logger.debug("Row %d: date=%r time=%r cc=%r bull=%d name=%r",
+                        logger.debug("Row %d: date=%r time=%r cc=%r bull=%d name=%r url=%r",
                                     i, r.get('date'), r.get('time'), r.get('countryCode'),
-                                    r.get('bull'), r.get('name','')[:40])
+                                    r.get('bull'), r.get('name','')[:40], r.get('url','')[:60])
 
                     parsed_count = 0
                     for raw in raw_rows:
                         parsed = _parse_row(raw)
                         if parsed is not None:
-                            parsed.source_url = self.url
+                            # Only fall back to base URL if JS didn't extract a specific event URL
+                            if not parsed.source_url:
+                                parsed.source_url = self.url
                             events.append(parsed)
                             parsed_count += 1
                     logger.info("Parsed %d valid events", parsed_count)

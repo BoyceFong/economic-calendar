@@ -1,6 +1,6 @@
 data_source:
   url: https://www.investing.com/economic-calendar/
-  refresh_interval_minutes: 2
+  refresh_interval_minutes: 10
   date_range_days: 2
 filters:
   currencies:
@@ -12,8 +12,8 @@ filters:
   min_importance: low
 widget:
   geometry:
-    x: -941
-    y: -614
+    x: -1436
+    y: -569
     width: 578
     height: 705
   always_on_top: false
@@ -35,6 +35,6 @@ notifications:
   lead_time_minutes: 15
   min_importance: high
   sound: default
-  state_file: data/notified.json
+  state_file: /Users/boyce/Misc/code/dev/economic-calendar/data/notified.json
 cache:
-  file: data/cache.json
+  file: /Users/boyce/Misc/code/dev/economic-calendar/data/cache.json

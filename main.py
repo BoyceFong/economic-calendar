@@ -10,10 +10,11 @@ from typing import Any
 
 import yaml
 
+import paths
 
-def setup_logging(log_dir: str = "data") -> logging.Logger:
-    os.makedirs(log_dir, exist_ok=True)
-    log_file = os.path.join(log_dir, "widget.log")
+
+def setup_logging() -> logging.Logger:
+    log_file = paths.log_path()
 
     root = logging.getLogger()
     root.setLevel(logging.DEBUG)
@@ -44,17 +45,29 @@ def load_config(path: str) -> dict[str, Any]:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description="Investing.com Economic Calendar Widget")
-    parser.add_argument("--config", default="config.yaml", help="Path to config.yaml")
+    parser.add_argument("--config", default=None, help="Path to config.yaml (default: auto-detect)")
     args = parser.parse_args()
+
+    # Ensure user config exists (copies bundled config on first run)
+    paths.ensure_user_config()
+
+    config_file = args.config or paths.config_path()
 
     logger = setup_logging()
     logger.info("=" * 60)
     logger.info("Economic Calendar Widget starting")
     logger.info("Python: %s", sys.executable)
     logger.info("Platform: %s", sys.platform)
+    logger.info("Frozen: %s", paths.is_frozen())
+    logger.info("Config: %s", config_file)
+    logger.info("Data dir: %s", paths.data_dir())
     logger.info("=" * 60)
 
-    config = load_config(args.config)
+    config = load_config(config_file)
+
+    # Override cache/state paths to use the resolved data directory
+    config["cache"]["file"] = paths.cache_path()
+    config["notifications"]["state_file"] = paths.state_path()
 
     cache_file = config["cache"]["file"]
     os.makedirs(os.path.dirname(os.path.abspath(cache_file)) or ".", exist_ok=True)
@@ -96,7 +109,7 @@ def main() -> int:
     logger.info("Widget displayed")
 
     scheduler.start()
-    refresh_min = config["data_source"].get("refresh_interval_minutes", 2)
+    refresh_min = config["data_source"].get("refresh_interval_minutes", 10)
     logger.info("Scheduler started (refresh every %d minutes)", refresh_min)
 
     exit_code = app.exec()
