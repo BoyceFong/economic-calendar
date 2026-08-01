@@ -1,0 +1,22 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.venv/
+venv/
+
+# Project runtime state(缓存 / 日志 / 调试产物)
+data/*.json
+data/*.log
+data/*.html
+data/*.tmp
+
+# 设计稿 / 预检产物(非项目运行所需)
+economic-calendar-widget-ui/
+
+# IDE / 系统
+.trae/
+.DS_Store
+*.swp
+*~

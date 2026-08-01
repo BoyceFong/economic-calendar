@@ -1,0 +1,40 @@
+data_source:
+  url: https://www.investing.com/economic-calendar/
+  refresh_interval_minutes: 2
+  date_range_days: 2
+filters:
+  currencies:
+  - USD
+  - EUR
+  - GBP
+  - JPY
+  - CNY
+  min_importance: low
+widget:
+  geometry:
+    x: -941
+    y: -614
+    width: 578
+    height: 705
+  always_on_top: false
+  opacity: 0.92
+  font_family: .AppleSystemUIFont
+  font_size: 12
+  highlight_color:
+  - 255
+  - 87
+  - 87
+  - 60
+  row_alt_color:
+  - 255
+  - 255
+  - 255
+  - 8
+notifications:
+  enabled: true
+  lead_time_minutes: 15
+  min_importance: high
+  sound: default
+  state_file: data/notified.json
+cache:
+  file: data/cache.json
