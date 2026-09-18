@@ -1,0 +1,61 @@
+import Foundation
+
+/// Country code → currency mapping. Verbatim port of `fetcher.COUNTRY_TO_CURRENCY`.
+enum CountryMaps {
+    static let countryToCurrency: [String: String] = [
+        "US": "USD", "EU": "EUR", "UK": "GBP", "JP": "JPY", "CN": "CNY",
+        "DE": "EUR", "FR": "EUR", "IT": "EUR", "ES": "EUR", "NL": "EUR",
+        "AT": "EUR", "BE": "EUR", "PT": "EUR", "FI": "EUR", "IE": "EUR",
+        "SK": "EUR", "LU": "EUR", "GR": "EUR", "SI": "EUR", "CY": "EUR",
+        "MT": "EUR", "EE": "EUR", "LV": "EUR", "LT": "EUR",
+        "CA": "CAD", "AU": "AUD", "NZ": "NZD", "CH": "CHF",
+        "KR": "KRW", "HK": "HKD", "SG": "SGD", "IN": "INR",
+        "BR": "BRL", "ZA": "ZAR", "MX": "MXN", "RU": "RUB",
+        "SE": "SEK", "NO": "NOK", "DK": "DKK", "PL": "PLN",
+        "TR": "TRY", "TH": "THB", "ID": "IDR", "MY": "MYR",
+        "PH": "PHP", "TW": "TWD", "VN": "VND", "SA": "SAR",
+        "AE": "AED", "CL": "CLP", "CO": "COP", "PE": "PEN",
+        "CZ": "CZK", "HU": "HUF", "RO": "RON", "IL": "ILS",
+    ]
+
+    /// Currency code → (flag emoji, country code). Port of `widget._CURRENCY_TO_FLAG`.
+    static let currencyFlags: [String: (flag: String, code: String)] = [
+        "USD": ("🇺🇸", "US"),
+        "EUR": ("🇪🇺", "EU"),
+        "GBP": ("🇬🇧", "UK"),
+        "JPY": ("🇯🇵", "JP"),
+        "CNY": ("🇨🇳", "CN"),
+        "CAD": ("🇨🇦", "CA"),
+        "AUD": ("🇦🇺", "AU"),
+        "NZD": ("🇳🇿", "NZ"),
+        "CHF": ("🇨🇭", "CH"),
+        "KRW": ("🇰🇷", "KR"),
+        "HKD": ("🇭🇰", "HK"),
+        "SGD": ("🇸🇬", "SG"),
+        "INR": ("🇮🇳", "IN"),
+        "BRL": ("🇧🇷", "BR"),
+        "ZAR": ("🇿🇦", "ZA"),
+        "MXN": ("🇲🇽", "MX"),
+        "RUB": ("🇷🇺", "RU"),
+        "SEK": ("🇸🇪", "SE"),
+        "NOK": ("🇳🇴", "NO"),
+        "DKK": ("🇩🇰", "DK"),
+        "PLN": ("🇵🇱", "PL"),
+        "TRY": ("🇹🇷", "TR"),
+        "THB": ("🇹🇭", "TH"),
+        "IDR": ("🇮🇩", "ID"),
+        "MYR": ("🇲🇾", "MY"),
+        "PHP": ("🇵🇭", "PH"),
+        "TWD": ("🇹🇼", "TW"),
+        "VND": ("🇻🇳", "VN"),
+        "SAR": ("🇸🇦", "SA"),
+        "AED": ("🇦🇪", "AE"),
+        "CLP": ("🇨🇱", "CL"),
+        "COP": ("🇨🇴", "CO"),
+        "PEN": ("🇵🇪", "PE"),
+        "CZK": ("🇨🇿", "CZ"),
+        "HUF": ("🇭🇺", "HU"),
+        "RON": ("🇷🇴", "RO"),
+        "ILS": ("🇮🇱", "IL"),
+    ]
+}

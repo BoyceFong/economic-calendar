@@ -1,24 +1,14 @@
-# Python
-__pycache__/
-*.py[cod]
-*$py.class
-*.egg-info/
-.venv/
-venv/
-
-# Project runtime state(缓存 / 日志 / 调试产物)
-data/*.json
-data/*.log
-data/*.html
-data/*.tmp
-
-# PyInstaller build artifacts
-build/
+# Swift / SPM
+.build/
 dist/
-*.spec.bak
+build/
+*.o
 
-# 设计稿 / 预检产物(非项目运行所需)
-economic-calendar-widget-ui/
+# 遗留 Python 环境（旧实现已删除，本地残留不纳入版本控制）
+.venv/
+
+# 运行时数据（开发模式的缓存 / 日志 / 调试产物）
+data/
 
 # IDE / 系统
 .trae/
