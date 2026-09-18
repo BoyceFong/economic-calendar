@@ -7,11 +7,12 @@
 ![Xcode](https://img.shields.io/badge/Xcode-26-147EFB?logo=xcode&logoColor=white)
 ![Data%20Source](https://img.shields.io/badge/data-investing.com-1011ee)
 
-| 浅色 | 深色 |
-|---|---|
-| ![浅色外观](docs/screenshot-light.png) | ![深色外观](docs/screenshot-dark.png) |
+| | 浅色 | 深色 |
+|---|---|---|
+| **聚焦 / 桌面聚焦**（可读态） | ![聚焦浅色](docs/screenshot-focused-light.png) | ![聚焦深色](docs/screenshot-focused-dark.png) |
+| **其他窗口聚焦**（透明态） | ![闲置浅色](docs/screenshot-idle-light.png) | ![闲置深色](docs/screenshot-idle-dark.png) |
 
-↑ 实拍（闲置态，对齐原生桌面 widget）：透明磨砂卡片 + 白灰文字 + 边缘凝光高亮，26pt 圆角；当前时间分割线（`12:51` / `12:52` 胶囊）插在两行分界处并逐分钟刷新；★ 分级标色，Actual 超预期绿色高亮。鼠标悬停 / 点击 / 桌面聚焦时自动切回可读的常规玻璃态。
+↑ 实拍：对齐原生桌面 widget 的两种状态 —— 聚焦时为可读的 Liquid Glass 毛玻璃；其他窗口聚焦时淡化为透明磨砂，文字图标切换白灰色系，卡片边缘带凝光高亮。当前时间分割线（胶囊）插在两行分界处并逐分钟刷新，材质实时透出并跟随桌面壁纸。
 
 ## 为什么是它
 

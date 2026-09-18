@@ -97,9 +97,11 @@ Economic Calendar 是一个 **macOS 桌面经济日历小组件**：以浮层卡
 
 **交互态透明**（对齐原生桌面 widget 的驱动语义）：是否透明**跟随系统焦点**，与鼠标位置无关 —
 
-- 桌面本身聚焦（frontmost = Finder 且无 Finder 文件窗口在屏，`CGWindowList` 排除桌面元素后为空）→ `Glass.regular`（可读）
-- 其他任何应用窗口聚焦 → `Glass.clear`（原生 widget 的透明磨砂态）
-- 点击日历窗口自己 → 面板变 key（`becomesKeyOnlyIfNeeded = false`，仍不激活 app）→ `Glass.regular`
+- 桌面本身聚焦（frontmost = Finder 且无 Finder 文件窗口在屏，`CGWindowList` 排除桌面元素后为空）→ 可读态
+- 其他任何应用窗口聚焦 → 透明态
+- 点击日历窗口自己 → 面板变 key（`becomesKeyOnlyIfNeeded = false`，仍不激活 app）→ 可读态
+
+**材质实现的关键坑**：SwiftUI 的 `.glassEffect` 在透明无边框窗口里对窗外内容做**快照式采样** —— 可读态用它会导致背景"冻住"不跟随壁纸变化。因此可读态的卡片材质用 AppKit 层的 `NSGlassEffectView`（`style = .regular`，系统 widget 同源的活体材质，经 `onInteractingChange` 回调淡入淡出），闲置态则用 SwiftUI `Glass.clear`（透明态本身正确跟随背景）。
 
 透明态完整复刻 widget 视觉：全部文字/图标切换为白灰色系（环境键 `widgetIdle` 驱动，各视图前景色随动），卡片边缘叠加一圈顶亮底弱的**凝光高亮描边**。切换用 `withAnimation` 0.35s 过渡，两种外观自动适配。
 

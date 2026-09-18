@@ -17,6 +17,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var geometrySaveTask: Task<Void, Never>?
     private var transparencyObserver: AnyCancellable?
     private var focusObservers: [NSObjectProtocol] = []
+    private var glassBacking: NSGlassEffectView?
 
     /// Mirror native desktop widgets: readable glass when the desktop itself
     /// is focused or our panel is key; translucent when another app's window
@@ -94,6 +95,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         observeReduceTransparency()
         installFocusObservers()
 
+        model.onInteractingChange = { [weak self] interacting in
+            self?.updateGlassBacking(interacting: interacting)
+        }
+        updateGlassBacking(interacting: model.isInteracting)
+
         if fetchOnce {
             Task { await fetchOnceAndExit(config: config) }
         } else {
@@ -134,6 +140,21 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let container = NSView(frame: NSRect(x: 0, y: 0, width: panel.frame.width, height: panel.frame.height))
         container.autoresizingMask = [.width, .height]
 
+        if model.glassMode == .glass {
+            // Readable state uses AppKit's live Liquid Glass material —
+            // SwiftUI .glassEffect snapshots the behind-window backdrop in a
+            // borderless window (frozen wallpaper), NSGlassEffectView tracks
+            // it in real time like native desktop widgets do.
+            let backing = NSGlassEffectView(frame: container.bounds)
+            backing.style = .regular
+            backing.cornerRadius = Theme.cornerRadius
+            backing.autoresizingMask = [.width, .height]
+            backing.alphaValue = 0
+            backing.isHidden = true
+            container.addSubview(backing)
+            glassBacking = backing
+        }
+
         if model.glassMode == .material {
             let effect = NSVisualEffectView(frame: container.bounds)
             effect.material = .popover
@@ -160,6 +181,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         panel.invalidateCardShadow()
 
         self.panel = panel
+    }
+
+    /// Fade the AppKit glass card backing in/out (readable ↔ translucent).
+    private func updateGlassBacking(interacting: Bool) {
+        guard let glassBacking, model.glassMode == .glass else { return }
+        NSAnimationContext.runAnimationGroup { context in
+            context.duration = 0.35
+            context.allowsImplicitAnimation = true
+            glassBacking.animator().alphaValue = interacting ? 1 : 0
+        }
+        glassBacking.isHidden = false
     }
 
     private func observeReduceTransparency() {

@@ -56,6 +56,12 @@ final class AppModel {
     @ObservationIgnored private var desktopFocused = false
     private(set) var isInteracting = false
 
+    /// Notified on every readable↔translucent switch; the AppKit layer uses
+    /// it to show/hide the live NSGlassEffectView card backing (SwiftUI's
+    /// glassEffect snapshots the backdrop in a borderless window and would
+    /// freeze behind-window content — the AppKit material tracks it live).
+    @ObservationIgnored var onInteractingChange: ((Bool) -> Void)?
+
     var isIdle: Bool { !isInteracting }
 
     func setPanelKey(_ on: Bool) {
@@ -72,6 +78,7 @@ final class AppModel {
         withAnimation(.easeInOut(duration: 0.35)) {
             isInteracting = panelKey || desktopFocused
         }
+        onInteractingChange?(isInteracting)
     }
 
     private var flashTask: Task<Void, Never>?
