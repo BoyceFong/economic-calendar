@@ -7,7 +7,7 @@ struct RootView: View {
 
     var body: some View {
         ZStack {
-            CardBackground(mode: model.glassMode)
+            CardBackground(mode: model.glassMode, interacting: model.isInteracting)
 
             VStack(spacing: 0) {
                 TitleBarView()
@@ -40,6 +40,7 @@ struct RootView: View {
             RoundedRectangle(cornerRadius: Theme.cornerRadius)
                 .strokeBorder(Color.primary.opacity(0.12), lineWidth: 1)
         }
+        .onHover { model.setHovering($0) }
         .contextMenu {
             ContextMenuContent(event: nil)
         }

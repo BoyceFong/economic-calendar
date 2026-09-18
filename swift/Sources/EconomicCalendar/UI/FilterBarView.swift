@@ -80,6 +80,9 @@ struct CurrencyFilterButton: View {
             CurrencyPopoverView()
                 .frame(width: 270)
         }
+        .onChange(of: showingPopover) { _, open in
+            model.setPopoverOpen(open)
+        }
     }
 }
 

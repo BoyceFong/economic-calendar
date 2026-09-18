@@ -67,7 +67,9 @@ final class CalendarFetcher: NSObject {
 
             var rawRows = try await extractRows(webView)
             AppLog.shared.info("Extracted \(rawRows.count) raw rows")
-            for (i, r) in rawRows.prefix(5).enumerated() {
+            // EC_DEBUG_ROWS=1 → dump every raw row (field forensics).
+            let dumpAll = ProcessInfo.processInfo.environment["EC_DEBUG_ROWS"] == "1"
+            for (i, r) in (dumpAll ? Array(rawRows.enumerated()) : Array(rawRows.prefix(5).enumerated())) {
                 AppLog.shared.debug("Row \(i): date='\(r.date)' time='\(r.time)' cc='\(r.countryCode)' bull=\(r.bull) name='\(r.name)'")
             }
 

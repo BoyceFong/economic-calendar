@@ -39,6 +39,9 @@ final class Notifier: NSObject, UNUserNotificationCenterDelegate {
         guard let center else { return }
         let lead = TimeInterval(config.leadTimeMinutes * 60)
         for event in events where event.importance >= config.notifyMinImportance {
+            // "All Day" / "Tentative" events carry no reliable instant —
+            // notifying against their day-midnight placeholder would misfire.
+            guard event.timeLabel == nil else { continue }
             let delta = event.time.timeIntervalSince(now)
             guard delta >= 0, delta <= lead else { continue }
             guard !(await store.isNotified(event.id)) else { continue }

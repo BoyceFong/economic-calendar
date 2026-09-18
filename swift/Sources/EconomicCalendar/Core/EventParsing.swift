@@ -90,25 +90,39 @@ enum EventParsing {
         return (Int(m.4) ?? 0, month, Int(m.3) ?? 0)
     }
 
-    /// "H:MM" / "H:MM AM/PM" → instant. Port of `_parse_time`.
-    static func parseEventTime(_ text: String, year: Int, month: Int, day: Int) -> Date {
+    /// "H:MM" / "H:MM AM/PM" → instant. Returns nil when the text is not a
+    /// plain clock time — investing.com also renders live countdowns ("30m"),
+    /// "All Day" / "Tentative" labels, and clock-like widgets in the time
+    /// cell; fabricating a midnight instant for those produced phantom 00:00
+    /// events (the legacy `_parse_time` bug).
+    static func parseEventTime(_ text: String, year: Int, month: Int, day: Int) -> Date? {
         let trimmed = text.trimmingCharacters(in: .whitespaces)
-        let timeRegex = /^(\d{1,2}):(\d{2})(?:\s*(AM|PM|am|pm))?/
-        var hour = 0
-        var minute = 0
-        if let m = trimmed.firstMatch(of: timeRegex) {
-            hour = Int(m.1) ?? 0
-            minute = Int(m.2) ?? 0
-            let ampm = m.3.map { $0.uppercased() } ?? ""
-            if ampm == "PM" && hour < 12 { hour += 12 }
-            else if ampm == "AM" && hour == 12 { hour = 0 }
-        }
+        let timeRegex = /^(\d{1,2}):(\d{2})\s*(AM|PM|am|pm)?$/
+        guard let m = trimmed.firstMatch(of: timeRegex) else { return nil }
+        var hour = Int(m.1) ?? 0
+        let minute = Int(m.2) ?? 0
+        let ampm = m.3.map { $0.uppercased() } ?? ""
+        if ampm == "PM" && hour < 12 { hour += 12 }
+        else if ampm == "AM" && hour == 12 { hour = 0 }
         var comps = DateComponents()
         comps.year = year
         comps.month = month
         comps.day = day
         comps.hour = hour
         comps.minute = minute
+        var cal = Calendar(identifier: .gregorian)
+        cal.timeZone = localTimeZone
+        return cal.date(from: comps)
+    }
+
+    /// Midnight (Asia/Shanghai) of the given day — sort position for events
+    /// without a fixed time ("All Day" / "Tentative"), matching investing.com's
+    /// day-top placement.
+    static func startOfDay(year: Int, month: Int, day: Int) -> Date {
+        var comps = DateComponents()
+        comps.year = year
+        comps.month = month
+        comps.day = day
         var cal = Calendar(identifier: .gregorian)
         cal.timeZone = localTimeZone
         return cal.date(from: comps) ?? Date(timeIntervalSince1970: 0)
@@ -154,6 +168,9 @@ enum EventParsing {
     }
 
     /// Port of `_parse_row` + fetch-time filtering + time sort.
+    /// Rows whose time cell is not a plain clock time ("All Day", "Tentative",
+    /// live countdowns like "30m") keep the site's wording in `timeLabel` and
+    /// sort to the start of their day — never a fabricated 00:00 instant.
     static func parseRawRows(
         _ rows: [RawRow],
         fallbackURL: String,
@@ -167,10 +184,31 @@ enum EventParsing {
             let currency = resolveCurrency(row.countryCode)
             guard !currency.isEmpty else { continue }
             guard let ymd = parseDateHeader(row.date) else { continue }
-            let time = parseEventTime(row.time, year: ymd.year, month: ymd.month, day: ymd.day)
             let name = row.name.trimmingCharacters(in: .whitespaces)
             guard !name.isEmpty else { continue }
             let bull = row.bull == 0 ? 1 : row.bull
+
+            let time: Date
+            let timeLabel: String?
+            if let parsed = parseEventTime(row.time, year: ymd.year, month: ymd.month, day: ymd.day) {
+                // investing.com's time cell has live states: the in-flight
+                // event's cell can render the current clock ("10:36"). A
+                // "scheduled time" equal to the scrape moment is that artifact,
+                // not a schedule — keep the raw text as the label.
+                var cal = Calendar(identifier: .gregorian)
+                cal.timeZone = localTimeZone
+                if cal.isDate(parsed, equalTo: now, toGranularity: .minute) {
+                    time = parsed
+                    timeLabel = String(row.time.trimmingCharacters(in: .whitespaces).prefix(16))
+                } else {
+                    time = parsed
+                    timeLabel = nil
+                }
+            } else {
+                time = startOfDay(year: ymd.year, month: ymd.month, day: ymd.day)
+                timeLabel = String(row.time.trimmingCharacters(in: .whitespaces).prefix(16))
+            }
+
             let event = EconomicEvent(
                 id: makeEventID(currency: currency, name: name, date: row.date, time: row.time),
                 time: time,
@@ -180,7 +218,8 @@ enum EventParsing {
                 actual: row.actual,
                 forecast: row.forecast,
                 previous: row.previous,
-                sourceURL: row.url.isEmpty ? fallbackURL : row.url
+                sourceURL: row.url.isEmpty ? fallbackURL : row.url,
+                timeLabel: timeLabel
             )
             if passesFetchFilters(event, currencies: currencies, minImportance: minImportance, now: now, dateRangeDays: dateRangeDays) {
                 events.append(event)

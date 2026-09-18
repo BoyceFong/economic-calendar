@@ -22,7 +22,7 @@ final class AppActions {
     /// "{HH:MM} | {flag} | {name}\nActual: … | Forecast: … | Previous: …"
     func copyEventDetails(_ event: EconomicEvent) {
         let text = """
-        \(Theme.hhmm(event.time)) | \(Theme.flagLabel(event.currency)) | \(event.name)
+        \(event.timeText) | \(Theme.flagLabel(event.currency)) | \(event.name)
         Actual: \(event.actual ?? "—") | Forecast: \(event.forecast ?? "—") | Previous: \(event.previous ?? "—")
         """
         NSPasteboard.general.clearContents()

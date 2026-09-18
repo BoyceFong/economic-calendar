@@ -24,7 +24,12 @@ enum PrintCacheTool {
         }
 
         let t = EventParsing.parseEventTime("01:00 PM", year: 2026, month: 9, day: 17)
-        check("parseEventTime PM", Theme.hhmm(t) == "13:00")
+        check("parseEventTime PM", t.map { Theme.hhmm($0) } == "13:00")
+        // Non-clock texts must NOT fabricate a midnight instant (the 00:00 bug).
+        check("parseEventTime rejects countdown", EventParsing.parseEventTime("30m", year: 2026, month: 9, day: 18) == nil)
+        check("parseEventTime rejects All Day", EventParsing.parseEventTime("All Day", year: 2026, month: 9, day: 18) == nil)
+        check("parseEventTime rejects clock-with-seconds", EventParsing.parseEventTime("10:15:42", year: 2026, month: 9, day: 18) == nil)
+        check("parseEventTime accepts 24h", EventParsing.parseEventTime("23:30", year: 2026, month: 9, day: 18) != nil)
 
         check("resolveCurrency US", EventParsing.resolveCurrency("US") == "USD")
         check("resolveCurrency DE", EventParsing.resolveCurrency("DE") == "EUR")
@@ -43,6 +48,28 @@ enum PrintCacheTool {
             [row], fallbackURL: "", currencies: ["USD", "EUR"], minImportance: .low,
             now: now, dateRangeDays: 2)
         check("parseRawRows end-to-end", events.count == 1)
+
+        // "All Day" rows keep the site's label, sort at day top, and never
+        // carry a fabricated precise time.
+        let allDay = RawRow(date: "Friday, September 18, 2026", time: "All Day", countryCode: "JP",
+                            bull: 3, name: "BoJ Interest Rate Decision", url: "",
+                            actual: nil, forecast: "1.25%", previous: "1.00%")
+        let now2 = EventParsing.parseISODate("2026-09-18T10:00:00+08:00")!
+        let labelEvents = EventParsing.parseRawRows(
+            [allDay], fallbackURL: "", currencies: ["JPY"], minImportance: .low,
+            now: now2, dateRangeDays: 2)
+        check("All Day keeps label", labelEvents.first?.timeLabel == "All Day")
+        check("All Day sorts at day top", labelEvents.first.map { Theme.hhmm($0.time) } == "00:00")
+
+        // A "scheduled" time equal to the scrape minute is the live-clock
+        // artifact, not a schedule.
+        let clockRow = RawRow(date: "Friday, September 18, 2026", time: "10:00", countryCode: "JP",
+                              bull: 2, name: "Live Clock Row", url: "",
+                              actual: nil, forecast: nil, previous: nil)
+        let clockEvents = EventParsing.parseRawRows(
+            [clockRow], fallbackURL: "", currencies: ["JPY"], minImportance: .low,
+            now: now2, dateRangeDays: 2)
+        check("live clock kept as label", clockEvents.first?.timeLabel == "10:00")
 
         if failures > 0 { exit(1) }
         print("All parse tests passed")

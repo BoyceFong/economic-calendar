@@ -59,11 +59,14 @@ struct EventRowView: View {
     // MARK: Cells
 
     private var timeCell: some View {
-        Text(Theme.hhmm(event.time))
+        Text(event.timeText)
             .font(.system(size: 12))
             .foregroundStyle(.secondary)
+            .lineLimit(1)
             .padding(.trailing, 6)
-            .help(Theme.tooltipTime(event.time))
+            .help(event.timeLabel == nil
+                  ? Theme.tooltipTime(event.time)
+                  : "\(event.timeLabel!) · \(Theme.tooltipTime(event.time))")
     }
 
     private var currencyCell: some View {

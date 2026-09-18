@@ -4,7 +4,8 @@ import SwiftUI
 /// The Qt app's hardcoded light-only palette is replaced by system colors so
 /// both appearances come out right automatically.
 enum Theme {
-    static let cornerRadius: CGFloat = 16
+    /// Matches the system desktop-widget corner radius.
+    static let cornerRadius: CGFloat = 26
     static let titleBarHeight: CGFloat = 44
     static let filterBarHeight: CGFloat = 38
     static let headerHeight: CGFloat = 28

@@ -1,6 +1,7 @@
 import AppKit
 import Foundation
 import Observation
+import SwiftUI
 
 enum GlassMode: Sendable {
     case glass       // SwiftUI .glassEffect (macOS 26 Liquid Glass)
@@ -44,6 +45,46 @@ final class AppModel {
     }
 
     var glassMode: GlassMode
+
+    /// True while the user is "on" the widget (cursor inside, or a popover
+    /// open): the card uses the readable `.regular` glass. When idle it fades
+    /// to `.clear` — the translucent native-desktop-widget look — in both
+    /// light and dark appearance.
+    @ObservationIgnored private var hovering = false
+    @ObservationIgnored private var popoverCount = 0
+    @ObservationIgnored private var graceTask: Task<Void, Never>?
+    private(set) var isInteracting = false
+
+    func setHovering(_ on: Bool) {
+        hovering = on
+        updateInteraction()
+    }
+
+    func setPopoverOpen(_ open: Bool) {
+        popoverCount += open ? 1 : -1
+        updateInteraction()
+    }
+
+    private func updateInteraction() {
+        if hovering || popoverCount > 0 {
+            graceTask?.cancel()
+            graceTask = nil
+            setInteracting(true)
+        } else if isInteracting {
+            graceTask?.cancel()
+            graceTask = Task {
+                try? await Task.sleep(for: .seconds(2))
+                guard !Task.isCancelled else { return }
+                setInteracting(false)
+            }
+        }
+    }
+
+    private func setInteracting(_ on: Bool) {
+        withAnimation(.easeInOut(duration: 0.35)) {
+            isInteracting = on
+        }
+    }
 
     private var flashTask: Task<Void, Never>?
     private var nowTickTask: Task<Void, Never>?
