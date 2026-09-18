@@ -16,6 +16,47 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     private var geometrySaveTask: Task<Void, Never>?
     private var transparencyObserver: AnyCancellable?
+    private var focusObservers: [NSObjectProtocol] = []
+
+    /// Mirror native desktop widgets: readable glass when the desktop itself
+    /// is focused or our panel is key; translucent when another app's window
+    /// has focus. `didActivateApplication` + panel key notifications drive it.
+    private func installFocusObservers() {
+        let center = NotificationCenter.default
+        focusObservers.append(center.addObserver(
+            forName: NSWindow.didBecomeKeyNotification, object: panel, queue: .main
+        ) { [weak self] _ in self?.model.setPanelKey(true) })
+        focusObservers.append(center.addObserver(
+            forName: NSWindow.didResignKeyNotification, object: panel, queue: .main
+        ) { [weak self] _ in self?.model.setPanelKey(false) })
+        focusObservers.append(center.addObserver(
+            forName: NSWorkspace.didActivateApplicationNotification, object: nil, queue: .main
+        ) { [weak self] _ in self?.evaluateDesktopFocus() })
+        focusObservers.append(center.addObserver(
+            forName: NSWorkspace.activeSpaceDidChangeNotification, object: nil, queue: .main
+        ) { [weak self] _ in self?.evaluateDesktopFocus() })
+        evaluateDesktopFocus()
+    }
+
+    /// Desktop focused ⟺ Finder is frontmost AND no Finder file window is
+    /// onscreen (the desktop is Finder's "window", but CGWindowList excludes
+    /// desktop elements).
+    private func evaluateDesktopFocus() {
+        let frontmost = NSWorkspace.shared.frontmostApplication
+        let desktopFocused = frontmost?.bundleIdentifier == "com.apple.finder"
+            && !Self.finderFileWindowsOnscreen()
+        model.setDesktopFocused(desktopFocused)
+    }
+
+    private static func finderFileWindowsOnscreen() -> Bool {
+        guard let list = CGWindowListCopyWindowInfo(
+            [.optionOnScreenOnly, .excludeDesktopElements], kCGNullWindowID
+        ) as? [[String: Any]] else { return false }
+        return list.contains { info in
+            (info[kCGWindowOwnerName as String] as? String) == "Finder"
+                && (info[kCGWindowLayer as String] as? Int) == 0
+        }
+    }
 
     init(fetchOnce: Bool = false) {
         self.fetchOnce = fetchOnce
@@ -51,6 +92,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         actions.attach(panel: panel, scheduler: scheduler)
 
         observeReduceTransparency()
+        installFocusObservers()
 
         if fetchOnce {
             Task { await fetchOnceAndExit(config: config) }
@@ -63,6 +105,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationWillTerminate(_ notification: Notification) {
         scheduler?.stop()
         panel?.persistFrame()
+        focusObservers.forEach(NotificationCenter.default.removeObserver)
     }
 
     // MARK: - Window assembly
@@ -80,6 +123,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         panel.hidesOnDeactivate = false
         panel.level = AppPanel.makeAlwaysOnTop(AppSettings.alwaysOnTop)
         panel.delegate = self
+        // Clicking the panel makes it key (without activating the app) — the
+        // "user tapped the widget → readable glass" signal.
+        panel.becomesKeyOnlyIfNeeded = false
         // Manual resize range: wide enough for long event names, never
         // smaller than the fixed columns allow (parity with the Qt minimum).
         panel.minSize = NSSize(width: 524, height: 300)

@@ -6,6 +6,7 @@ import SwiftUI
 /// glass), so clicks register instantly even in the non-activating panel.
 struct ImportanceFilterChips: View {
     @Environment(AppModel.self) private var model
+    @Environment(\.widgetIdle) private var widgetIdle
 
     var body: some View {
         GlassEffectContainer(spacing: 8) {
@@ -30,7 +31,9 @@ struct ImportanceFilterChips: View {
     private func chip<Label: View>(_ threshold: Importance, @ViewBuilder label: () -> Label) -> some View {
         let selected = model.minImportance == threshold
         label()
-            .foregroundStyle(selected ? Color.white : Color.primary.opacity(0.85))
+            .foregroundStyle(selected
+                             ? Color.white
+                             : (widgetIdle ? Color.white.opacity(0.9) : Color.primary.opacity(0.85)))
             .padding(.horizontal, 11)
             .padding(.vertical, 6)
             .glassEffect(
@@ -51,6 +54,7 @@ struct ImportanceFilterChips: View {
 /// selection persists across launches.
 struct CurrencyFilterButton: View {
     @Environment(AppModel.self) private var model
+    @Environment(\.widgetIdle) private var widgetIdle
 
     @State private var showingPopover = false
 
@@ -65,7 +69,9 @@ struct CurrencyFilterButton: View {
             }
         }
         .foregroundStyle(
-            model.selectedCurrencies.isEmpty ? Color.primary.opacity(0.85) : Color.white)
+            model.selectedCurrencies.isEmpty
+                ? (widgetIdle ? Color.white.opacity(0.9) : Color.primary.opacity(0.85))
+                : Color.white)
         .padding(.horizontal, 11)
         .padding(.vertical, 6)
         .glassEffect(
@@ -79,9 +85,6 @@ struct CurrencyFilterButton: View {
         .popover(isPresented: $showingPopover, arrowEdge: .bottom) {
             CurrencyPopoverView()
                 .frame(width: 270)
-        }
-        .onChange(of: showingPopover) { _, open in
-            model.setPopoverOpen(open)
         }
     }
 }

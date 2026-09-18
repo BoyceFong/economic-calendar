@@ -6,6 +6,9 @@ import AppKit
 /// never takes focus away from the app you're typing in.
 final class AppPanel: NSPanel {
     override var canBecomeKey: Bool { true }
+    // Clicking the panel makes it key (without activating the app) — that's
+    // the "user tapped the widget → switch to readable glass" signal; the
+    // AppDelegate sets `becomesKeyOnlyIfNeeded = false` at build time.
 
     static func makeAlwaysOnTop(_ on: Bool) -> NSWindow.Level {
         on ? .floating : .normal

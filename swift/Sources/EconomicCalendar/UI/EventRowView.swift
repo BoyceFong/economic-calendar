@@ -5,6 +5,7 @@ import SwiftUI
 struct EventRowView: View {
     @Environment(AppModel.self) private var model
     @Environment(AppActions.self) private var actions
+    @Environment(\.widgetIdle) private var widgetIdle
 
     let data: EventRowData
 
@@ -61,7 +62,7 @@ struct EventRowView: View {
     private var timeCell: some View {
         Text(event.timeText)
             .font(.system(size: 12))
-            .foregroundStyle(.secondary)
+            .foregroundStyle(widgetIdle ? Color.white.opacity(0.7) : Color.secondary)
             .lineLimit(1)
             .padding(.trailing, 6)
             .help(event.timeLabel == nil
@@ -72,7 +73,7 @@ struct EventRowView: View {
     private var currencyCell: some View {
         Text(Theme.flagLabel(event.currency))
             .font(.system(size: 12, weight: .semibold))
-            .foregroundStyle(.primary)
+            .foregroundStyle(widgetIdle ? Color.white : Color.primary)
             .lineLimit(1)
             .help(event.currency)
     }
@@ -84,7 +85,7 @@ struct EventRowView: View {
     private var eventCell: some View {
         Text(event.name)
             .font(.system(size: 12))
-            .foregroundStyle(.primary)
+            .foregroundStyle(widgetIdle ? Color.white : Color.primary)
             .multilineTextAlignment(.leading)
             .lineLimit(3)
             .fixedSize(horizontal: false, vertical: true)
@@ -96,7 +97,8 @@ struct EventRowView: View {
     private func valueCell(_ text: String?, color: Color?) -> some View {
         Text(text ?? "—")
             .font(.system(size: 12).monospacedDigit())
-            .foregroundStyle(color.map { AnyShapeStyle($0) } ?? AnyShapeStyle(.tertiary))
+            .foregroundStyle(color.map { AnyShapeStyle($0) } ?? AnyShapeStyle(
+                widgetIdle ? Color.white.opacity(0.5) : Color(nsColor: .tertiaryLabelColor)))
             .lineLimit(1)
             .padding(.leading, 4)
     }

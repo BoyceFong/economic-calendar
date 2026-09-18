@@ -95,7 +95,13 @@ Economic Calendar 是一个 **macOS 桌面经济日历小组件**：以浮层卡
 
 遵循 HIG「节制使用」：玻璃只给**功能层**——卡片底、筛选 chips、时间胶囊；列表行永不上玻璃（55 行玻璃 = 渲染灾难 + 注意力灾难）。
 
-**交互态透明**（对齐原生桌面 widget）：光标悬停在卡片上或货币弹窗打开时，卡片用可读性优先的 `Glass.regular`；闲置 2 秒后淡化为 `Glass.clear` —— 即原生 widget 那种强烈透出壁纸的磨砂态（材质本身自动适配浅色/深色）。状态机在 AppModel（hover / popover 计数 + 2s 宽限防抖），透明度切换用 `withAnimation` 过渡。
+**交互态透明**（对齐原生桌面 widget 的驱动语义）：是否透明**跟随系统焦点**，与鼠标位置无关 —
+
+- 桌面本身聚焦（frontmost = Finder 且无 Finder 文件窗口在屏，`CGWindowList` 排除桌面元素后为空）→ `Glass.regular`（可读）
+- 其他任何应用窗口聚焦 → `Glass.clear`（原生 widget 的透明磨砂态）
+- 点击日历窗口自己 → 面板变 key（`becomesKeyOnlyIfNeeded = false`，仍不激活 app）→ `Glass.regular`
+
+透明态完整复刻 widget 视觉：全部文字/图标切换为白灰色系（环境键 `widgetIdle` 驱动，各视图前景色随动），卡片边缘叠加一圈顶亮底弱的**凝光高亮描边**。切换用 `withAnimation` 0.35s 过渡，两种外观自动适配。
 
 三级降级链（`GlassMode`）：
 
@@ -116,7 +122,7 @@ Economic Calendar 是一个 **macOS 桌面经济日历小组件**：以浮层卡
 - 边界情况：`now` 早于全部事件 → 元素在索引 0，胶囊整体偏移到线下方；晚于全部事件 → 在末尾，胶囊偏移到线上方。线还有 ±1pt 内推，保证贴边时也不被滚动视口裁掉；
 - 胶囊文字用 `TimelineView(.periodic(60s))` 局部刷新（只有胶囊重绘）；分界线位置由 AppModel 的 30s tick 重算（对齐旧版 `_now_timer`）。
 
-卡片圆角 26pt（`Theme.cornerRadius`），对齐系统桌面小组件的圆角规格；窗口透明底 + SwiftUI clipShape 裁圆角，边框窗口阴影靠 `invalidateShadow()` 维持。
+卡片圆角 26pt（`Theme.cornerRadius`），对齐系统桌面小组件的圆角规格；窗口透明底 + SwiftUI clipShape 裁圆角，边框窗口阴影靠 `invalidateShadow()` 维持。时间格的活体状态（倒计时/实时时钟/All Day）见 §3.3b —— 显示与站点逐字对齐正是本轮"数据对不上"反馈的修复。
 
 ### 3.3b 时间格的活体状态（数据正确性关键）
 

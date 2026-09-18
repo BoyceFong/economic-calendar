@@ -37,10 +37,20 @@ struct RootView: View {
         }
         .clipShape(RoundedRectangle(cornerRadius: Theme.cornerRadius))
         .overlay {
+            // Glass edge highlight ("凝光"): a bright specular rim, most
+            // visible in the idle widget state — as on native desktop widgets.
             RoundedRectangle(cornerRadius: Theme.cornerRadius)
-                .strokeBorder(Color.primary.opacity(0.12), lineWidth: 1)
+                .strokeBorder(
+                    LinearGradient(
+                        stops: [
+                            .init(color: .white.opacity(model.isIdle ? 0.65 : 0.28), location: 0),
+                            .init(color: .white.opacity(model.isIdle ? 0.10 : 0.05), location: 0.5),
+                            .init(color: .white.opacity(model.isIdle ? 0.45 : 0.16), location: 1),
+                        ],
+                        startPoint: .top, endPoint: .bottom),
+                    lineWidth: 1.2)
         }
-        .onHover { model.setHovering($0) }
+        .environment(\.widgetIdle, model.isIdle)
         .contextMenu {
             ContextMenuContent(event: nil)
         }

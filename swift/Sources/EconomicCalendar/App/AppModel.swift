@@ -46,43 +46,31 @@ final class AppModel {
 
     var glassMode: GlassMode
 
-    /// True while the user is "on" the widget (cursor inside, or a popover
-    /// open): the card uses the readable `.regular` glass. When idle it fades
-    /// to `.clear` — the translucent native-desktop-widget look — in both
-    /// light and dark appearance.
-    @ObservationIgnored private var hovering = false
-    @ObservationIgnored private var popoverCount = 0
-    @ObservationIgnored private var graceTask: Task<Void, Never>?
+    /// Readable `.regular` glass state, mirroring native desktop widgets:
+    /// regular when the desktop itself is focused (frontmost = Finder with no
+    /// Finder file windows onscreen) or when our panel is key (the user
+    /// clicked it); translucent `.clear` whenever any other app window has
+    /// focus. All text/icons switch to the native widget's white/gray scheme
+    /// in the clear state (`isIdle`).
+    @ObservationIgnored private var panelKey = false
+    @ObservationIgnored private var desktopFocused = false
     private(set) var isInteracting = false
 
-    func setHovering(_ on: Bool) {
-        hovering = on
+    var isIdle: Bool { !isInteracting }
+
+    func setPanelKey(_ on: Bool) {
+        panelKey = on
         updateInteraction()
     }
 
-    func setPopoverOpen(_ open: Bool) {
-        popoverCount += open ? 1 : -1
+    func setDesktopFocused(_ on: Bool) {
+        desktopFocused = on
         updateInteraction()
     }
 
     private func updateInteraction() {
-        if hovering || popoverCount > 0 {
-            graceTask?.cancel()
-            graceTask = nil
-            setInteracting(true)
-        } else if isInteracting {
-            graceTask?.cancel()
-            graceTask = Task {
-                try? await Task.sleep(for: .seconds(2))
-                guard !Task.isCancelled else { return }
-                setInteracting(false)
-            }
-        }
-    }
-
-    private func setInteracting(_ on: Bool) {
         withAnimation(.easeInOut(duration: 0.35)) {
-            isInteracting = on
+            isInteracting = panelKey || desktopFocused
         }
     }
 

@@ -3,16 +3,17 @@ import SwiftUI
 /// Title row: name + event count, with the window drag region behind it.
 struct TitleBarView: View {
     @Environment(AppModel.self) private var model
+    @Environment(\.widgetIdle) private var widgetIdle
 
     var body: some View {
         HStack(spacing: 8) {
             Text("Economic Calendar")
                 .font(.system(size: 16, weight: .semibold))
-                .foregroundStyle(.primary)
+                .foregroundStyle(widgetIdle ? Color.white : Color.primary)
             Spacer()
             Text(model.titleCount)
                 .font(.system(size: 13))
-                .foregroundStyle(.secondary)
+                .foregroundStyle(widgetIdle ? Color.white.opacity(0.65) : Color.secondary)
         }
         .padding(.horizontal, Theme.horizontalPadding)
         .frame(height: Theme.titleBarHeight)
@@ -23,12 +24,13 @@ struct TitleBarView: View {
 /// Bottom status line — same texts as the Qt status bar.
 struct StatusView: View {
     @Environment(AppModel.self) private var model
+    @Environment(\.widgetIdle) private var widgetIdle
 
     var body: some View {
         HStack(spacing: 0) {
             Text(model.status)
                 .font(.system(size: 11))
-                .foregroundStyle(.secondary)
+                .foregroundStyle(widgetIdle ? Color.white.opacity(0.65) : Color.secondary)
                 .lineLimit(1)
             Spacer()
         }
@@ -40,6 +42,8 @@ struct StatusView: View {
 /// Column header row — port of the Qt table header labels. Frames and inner
 /// paddings mirror EventRowView's cells exactly so labels align with content.
 struct ColumnHeaderView: View {
+    @Environment(\.widgetIdle) private var widgetIdle
+
     var body: some View {
         HStack(spacing: 0) {
             headerLabel("TIME", width: Theme.colTime, alignment: .leading)
@@ -62,7 +66,7 @@ struct ColumnHeaderView: View {
     private func headerLabel(_ title: String, width: CGFloat? = nil, alignment: Alignment = .leading) -> some View {
         Text(title)
             .font(.system(size: 10, weight: .semibold))
-            .foregroundStyle(.secondary)
+            .foregroundStyle(widgetIdle ? Color.white.opacity(0.6) : Color.secondary)
             .lineLimit(1)
             .frame(width: width, alignment: alignment)
     }
@@ -70,12 +74,14 @@ struct ColumnHeaderView: View {
 
 /// Centered italic placeholder — port of the Qt empty state.
 struct WaitingView: View {
+    @Environment(\.widgetIdle) private var widgetIdle
+
     var body: some View {
         VStack {
             Spacer()
             Text("Waiting for data…")
                 .font(.system(size: 12).italic())
-                .foregroundStyle(Color(nsColor: .tertiaryLabelColor))
+                .foregroundStyle(widgetIdle ? Color.white.opacity(0.55) : Color(nsColor: .tertiaryLabelColor))
             Spacer()
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)

@@ -1,5 +1,18 @@
 import SwiftUI
 
+/// True while the card is in the translucent native-widget state (idle):
+/// text and icons switch to the white/gray scheme widgets use.
+private struct WidgetIdleKey: EnvironmentKey {
+    static let defaultValue = false
+}
+
+extension EnvironmentValues {
+    var widgetIdle: Bool {
+        get { self[WidgetIdleKey.self] }
+        set { self[WidgetIdleKey.self] = newValue }
+    }
+}
+
 /// Shared metrics, dynamic (light/dark adaptive) colors, and formatters.
 /// The Qt app's hardcoded light-only palette is replaced by system colors so
 /// both appearances come out right automatically.
