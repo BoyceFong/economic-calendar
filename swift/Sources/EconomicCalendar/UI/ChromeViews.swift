@@ -89,29 +89,20 @@ struct WaitingView: View {
 }
 
 /// Card chrome background: Liquid Glass card, AppKit material, or opaque
-/// (Reduce Transparency) — see GlassMode. In glass mode the readable state's
-/// material is the AppKit NSGlassEffectView behind the hosting view (live
-/// backdrop sampling); the idle translucent state is SwiftUI `Glass.clear`.
+/// (Reduce Transparency) — see GlassMode. In glass mode BOTH card materials
+/// (readable `.regular` / translucent `.clear`) are the AppKit
+/// NSGlassEffectView behind the hosting view — a single live-sampling view
+/// whose style flips with focus. SwiftUI never draws the card glass:
+/// branch-switching a .glassEffect view destroys and recreates it, and the
+/// recreated effect stops sampling the backdrop.
 struct CardBackground: View {
     let mode: GlassMode
-    let interacting: Bool
 
     var body: some View {
         switch mode {
-        case .glass:
-            if interacting {
-                // Readable material comes from the AppKit NSGlassEffectView
-                // behind the hosting view — no SwiftUI glass here (stacking
-                // two materials would wash the card out).
-                Color.clear
-            } else {
-                Color.clear
-                    .glassEffect(Glass.clear,
-                                 in: .rect(cornerRadius: Theme.cornerRadius))
-            }
-        case .material:
-            // The AppKit NSVisualEffectView sits behind the hosting view;
-            // SwiftUI layer stays clear.
+        case .glass, .material:
+            // Material lives at the AppKit layer (NSGlassEffectView /
+            // NSVisualEffectView); the SwiftUI layer stays clear.
             Color.clear
         case .solid:
             RoundedRectangle(cornerRadius: Theme.cornerRadius)

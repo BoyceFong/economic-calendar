@@ -7,7 +7,7 @@ struct RootView: View {
 
     var body: some View {
         ZStack {
-            CardBackground(mode: model.glassMode, interacting: model.isInteracting)
+            CardBackground(mode: model.glassMode)
 
             VStack(spacing: 0) {
                 TitleBarView()

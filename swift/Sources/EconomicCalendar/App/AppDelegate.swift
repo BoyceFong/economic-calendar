@@ -141,16 +141,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         container.autoresizingMask = [.width, .height]
 
         if model.glassMode == .glass {
-            // Readable state uses AppKit's live Liquid Glass material —
-            // SwiftUI .glassEffect snapshots the behind-window backdrop in a
-            // borderless window (frozen wallpaper), NSGlassEffectView tracks
-            // it in real time like native desktop widgets do.
+            // BOTH card materials live on this single AppKit view — readable
+            // (.regular) and translucent (.clear, the native-widget look).
+            // Its backdrop sampling stays live across style flips; SwiftUI
+            // glassEffect would freeze after being recreated (branch-switch).
             let backing = NSGlassEffectView(frame: container.bounds)
-            backing.style = .regular
+            backing.style = .clear
             backing.cornerRadius = Theme.cornerRadius
             backing.autoresizingMask = [.width, .height]
-            backing.alphaValue = 0
-            backing.isHidden = true
             container.addSubview(backing)
             glassBacking = backing
         }
@@ -183,15 +181,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         self.panel = panel
     }
 
-    /// Fade the AppKit glass card backing in/out (readable ↔ translucent).
+    /// Flip the single AppKit glass card backing between materials
+    /// (readable `.regular` ↔ translucent widget-style `.clear`).
     private func updateGlassBacking(interacting: Bool) {
         guard let glassBacking, model.glassMode == .glass else { return }
-        NSAnimationContext.runAnimationGroup { context in
-            context.duration = 0.35
-            context.allowsImplicitAnimation = true
-            glassBacking.animator().alphaValue = interacting ? 1 : 0
-        }
-        glassBacking.isHidden = false
+        glassBacking.style = interacting ? .regular : .clear
     }
 
     private func observeReduceTransparency() {

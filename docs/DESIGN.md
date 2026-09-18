@@ -101,7 +101,7 @@ Economic Calendar 是一个 **macOS 桌面经济日历小组件**：以浮层卡
 - 其他任何应用窗口聚焦 → 透明态
 - 点击日历窗口自己 → 面板变 key（`becomesKeyOnlyIfNeeded = false`，仍不激活 app）→ 可读态
 
-**材质实现的关键坑**：SwiftUI 的 `.glassEffect` 在透明无边框窗口里对窗外内容做**快照式采样** —— 可读态用它会导致背景"冻住"不跟随壁纸变化。因此可读态的卡片材质用 AppKit 层的 `NSGlassEffectView`（`style = .regular`，系统 widget 同源的活体材质，经 `onInteractingChange` 回调淡入淡出），闲置态则用 SwiftUI `Glass.clear`（透明态本身正确跟随背景）。
+**材质实现的关键坑（两次踩坑）**：① SwiftUI `.glassEffect` 在透明无边框窗口里对窗外内容是**快照式采样** —— 可读态用它背景"冻住"不跟随壁纸；② 即便闲置态用 `Glass.clear`，只要用 `if/else` 分支切换玻璃视图，**销毁重建后的 glassEffect 不再初始化背景采样**，透明凝光态一次交互后就回不来了。最终方案：卡片两态共用**一块** AppKit `NSGlassEffectView`（系统 widget 同源、活体采样），只切 `style`（可读 `.regular` ↔ 透明 `.clear`，经 `onInteractingChange` 回调驱动），SwiftUI 层不画任何卡片玻璃。
 
 透明态完整复刻 widget 视觉：全部文字/图标切换为白灰色系（环境键 `widgetIdle` 驱动，各视图前景色随动），卡片边缘叠加一圈顶亮底弱的**凝光高亮描边**。切换用 `withAnimation` 0.35s 过渡，两种外观自动适配。
 
