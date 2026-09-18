@@ -41,7 +41,7 @@ struct EventRowView: View {
         .background(rowBackground)
         .overlay(alignment: .bottom) {
             Rectangle()
-                .fill(Color.primary.opacity(0.08))
+                .fill(widgetIdle ? IdlePalette.hairline : Color.primary.opacity(0.08))
                 .frame(height: 1)
         }
         .contentShape(Rectangle())
@@ -62,7 +62,7 @@ struct EventRowView: View {
     private var timeCell: some View {
         Text(event.timeText)
             .font(.system(size: 12))
-            .foregroundStyle(widgetIdle ? Color.white.opacity(0.7) : Color.secondary)
+            .foregroundStyle(widgetIdle ? IdlePalette.secondary : Color.secondary)
             .lineLimit(1)
             .padding(.trailing, 6)
             .help(event.timeLabel == nil
@@ -73,7 +73,10 @@ struct EventRowView: View {
     private var currencyCell: some View {
         Text(Theme.flagLabel(event.currency))
             .font(.system(size: 12, weight: .semibold))
-            .foregroundStyle(widgetIdle ? Color.white : Color.primary)
+            .foregroundStyle(widgetIdle ? IdlePalette.primary : Color.primary)
+            // Flag emoji can't be recolored, so the idle card desaturates it —
+            // the only way to keep a strict black/white/gray palette.
+            .grayscale(widgetIdle ? 1 : 0)
             .lineLimit(1)
             .help(event.currency)
     }
@@ -85,7 +88,7 @@ struct EventRowView: View {
     private var eventCell: some View {
         Text(event.name)
             .font(.system(size: 12))
-            .foregroundStyle(widgetIdle ? Color.white : Color.primary)
+            .foregroundStyle(widgetIdle ? IdlePalette.primary : Color.primary)
             .multilineTextAlignment(.leading)
             .lineLimit(3)
             .fixedSize(horizontal: false, vertical: true)
@@ -98,20 +101,24 @@ struct EventRowView: View {
         Text(text ?? "—")
             .font(.system(size: 12).monospacedDigit())
             .foregroundStyle(color.map { AnyShapeStyle($0) } ?? AnyShapeStyle(
-                widgetIdle ? Color.white.opacity(0.5) : Color(nsColor: .tertiaryLabelColor)))
+                widgetIdle ? IdlePalette.tertiary : Color(nsColor: .tertiaryLabelColor)))
             .lineLimit(1)
             .padding(.leading, 4)
     }
 
-    /// Actual beats forecast → green, misses → red (port of the refresh() logic).
+    /// Actual beats forecast → green, misses → red (port of the refresh()
+    /// logic); in the monochrome idle card the same distinction rides on
+    /// brightness instead of hue.
     private var actualColor: Color? {
         guard let actual = event.actual, !actual.isEmpty else { return nil }
         guard let av = EventParsing.tryFloat(actual) else { return nil }
         let fv = EventParsing.tryFloat(event.forecast)
         if let fv {
-            return av >= fv ? Theme.beatColor : Theme.missColor
+            return av >= fv
+                ? (widgetIdle ? IdlePalette.beat : Theme.beatColor)
+                : (widgetIdle ? IdlePalette.miss : Theme.missColor)
         }
-        return Theme.beatColor
+        return widgetIdle ? IdlePalette.beat : Theme.beatColor
     }
 
     // MARK: Background (port of _bg_for_row)
@@ -119,9 +126,11 @@ struct EventRowView: View {
     private var rowBackground: Color {
         let high = event.isHighImpact
         if hovering {
+            if widgetIdle { return high ? IdlePalette.highImpactHover : IdlePalette.rowFill }
             return high ? Color.red.opacity(0.12) : Color.primary.opacity(0.07)
         }
-        if high { return Color.red.opacity(0.06) }
-        return data.isAlt ? Color.primary.opacity(0.03) : Color.clear
+        if high { return widgetIdle ? IdlePalette.highImpactFill : Color.red.opacity(0.06) }
+        guard data.isAlt else { return Color.clear }
+        return widgetIdle ? IdlePalette.rowFill : Color.primary.opacity(0.03)
     }
 }

@@ -24,6 +24,8 @@ struct StarShape: Shape {
 }
 
 struct StarsView: View {
+    @Environment(\.widgetIdle) private var widgetIdle
+
     let level: Importance
     var size: CGFloat = 11
     var gap: CGFloat = 2
@@ -32,7 +34,7 @@ struct StarsView: View {
         HStack(spacing: gap) {
             ForEach(0..<level.rawValue, id: \.self) { _ in
                 StarShape()
-                    .fill(Theme.importanceColor(level))
+                    .fill(Theme.importanceColor(level, idle: widgetIdle))
                     .frame(width: size, height: size)
             }
         }

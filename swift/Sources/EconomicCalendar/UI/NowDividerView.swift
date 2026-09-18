@@ -9,6 +9,8 @@ import SwiftUI
 /// outside the list, so it is drawn entirely below/above the line instead —
 /// the divider stays fully visible at the top/bottom of the list.
 struct NowDividerView: View {
+    @Environment(\.widgetIdle) private var widgetIdle
+
     let position: DisplayRow.Position
 
     var body: some View {
@@ -16,17 +18,19 @@ struct NowDividerView: View {
             let label = Theme.hhmm(context.date)
             ZStack(alignment: .leading) {
                 Rectangle()
-                    .fill(Color.accentColor)
+                    .fill(widgetIdle ? IdlePalette.accent : Color.accentColor)
                     .frame(height: 1.5)
                     .offset(y: lineOffset)
 
                 Text(label)
                     .font(.system(size: 10, weight: .bold))
                     .monospacedDigit()
-                    .foregroundStyle(.white)
+                    .foregroundStyle(widgetIdle ? IdlePalette.primary : Color.white)
                     .padding(.horizontal, 7)
                     .padding(.vertical, 3)
-                    .glassEffect(.regular.tint(Color.accentColor), in: .capsule)
+                    .glassEffect(
+                        .regular.tint(widgetIdle ? IdlePalette.accentTint : Color.accentColor),
+                        in: .capsule)
                     .padding(.leading, 6)
                     .offset(y: pillOffset)
             }

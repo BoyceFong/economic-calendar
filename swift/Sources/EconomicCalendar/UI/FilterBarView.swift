@@ -32,13 +32,13 @@ struct ImportanceFilterChips: View {
         let selected = model.minImportance == threshold
         label()
             .foregroundStyle(selected
-                             ? Color.white
-                             : (widgetIdle ? Color.white.opacity(0.9) : Color.primary.opacity(0.85)))
+                             ? (widgetIdle ? IdlePalette.primary : Color.white)
+                             : (widgetIdle ? IdlePalette.primary.opacity(0.9) : Color.primary.opacity(0.85)))
             .padding(.horizontal, 11)
             .padding(.vertical, 6)
             .glassEffect(
                 selected
-                    ? Glass.regular.tint(Color.accentColor)
+                    ? Glass.regular.tint(widgetIdle ? IdlePalette.accentTint : Color.accentColor)
                     : Glass.regular,
                 in: .capsule)
             .contentShape(.capsule)
@@ -70,14 +70,14 @@ struct CurrencyFilterButton: View {
         }
         .foregroundStyle(
             model.selectedCurrencies.isEmpty
-                ? (widgetIdle ? Color.white.opacity(0.9) : Color.primary.opacity(0.85))
-                : Color.white)
+                ? (widgetIdle ? IdlePalette.primary.opacity(0.9) : Color.primary.opacity(0.85))
+                : (widgetIdle ? IdlePalette.primary : Color.white))
         .padding(.horizontal, 11)
         .padding(.vertical, 6)
         .glassEffect(
             model.selectedCurrencies.isEmpty
                 ? Glass.regular
-                : Glass.regular.tint(Color.accentColor),
+                : Glass.regular.tint(widgetIdle ? IdlePalette.accentTint : Color.accentColor),
             in: .capsule)
         .contentShape(.capsule)
         .onTapGesture { showingPopover = true }

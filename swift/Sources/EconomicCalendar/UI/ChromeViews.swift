@@ -9,11 +9,11 @@ struct TitleBarView: View {
         HStack(spacing: 8) {
             Text("Economic Calendar")
                 .font(.system(size: 16, weight: .semibold))
-                .foregroundStyle(widgetIdle ? Color.white : Color.primary)
+                .foregroundStyle(widgetIdle ? IdlePalette.primary : Color.primary)
             Spacer()
             Text(model.titleCount)
                 .font(.system(size: 13))
-                .foregroundStyle(widgetIdle ? Color.white.opacity(0.65) : Color.secondary)
+                .foregroundStyle(widgetIdle ? IdlePalette.secondary : Color.secondary)
         }
         .padding(.horizontal, Theme.horizontalPadding)
         .frame(height: Theme.titleBarHeight)
@@ -30,7 +30,7 @@ struct StatusView: View {
         HStack(spacing: 0) {
             Text(model.status)
                 .font(.system(size: 11))
-                .foregroundStyle(widgetIdle ? Color.white.opacity(0.65) : Color.secondary)
+                .foregroundStyle(widgetIdle ? IdlePalette.secondary : Color.secondary)
                 .lineLimit(1)
             Spacer()
         }
@@ -66,7 +66,7 @@ struct ColumnHeaderView: View {
     private func headerLabel(_ title: String, width: CGFloat? = nil, alignment: Alignment = .leading) -> some View {
         Text(title)
             .font(.system(size: 10, weight: .semibold))
-            .foregroundStyle(widgetIdle ? Color.white.opacity(0.6) : Color.secondary)
+            .foregroundStyle(widgetIdle ? IdlePalette.secondary : Color.secondary)
             .lineLimit(1)
             .frame(width: width, alignment: alignment)
     }
@@ -81,7 +81,7 @@ struct WaitingView: View {
             Spacer()
             Text("Waiting for data…")
                 .font(.system(size: 12).italic())
-                .foregroundStyle(widgetIdle ? Color.white.opacity(0.55) : Color(nsColor: .tertiaryLabelColor))
+                .foregroundStyle(widgetIdle ? IdlePalette.tertiary : Color(nsColor: .tertiaryLabelColor))
             Spacer()
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)

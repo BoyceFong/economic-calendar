@@ -4,20 +4,32 @@ import SwiftUI
 struct RootView: View {
     @Environment(AppModel.self) private var model
     @Environment(AppActions.self) private var actions
+    @Environment(\.colorScheme) private var colorScheme
+
+    /// The translucent widget look — monochrome content over widget glass.
+    /// Suppressed in `.solid` (Reduce Transparency), where the card is opaque
+    /// and the system's own label colors already carry the contrast.
+    private var idleLook: Bool { model.isIdle && model.glassMode != .solid }
 
     var body: some View {
         ZStack {
             CardBackground(mode: model.glassMode)
 
+            if model.glassMode != .solid {
+                // Appearance-matched widget veil (see Theme.idleVeil).
+                Theme.idleVeil(colorScheme)
+                    .opacity(model.isIdle ? 1 : 0)
+            }
+
             VStack(spacing: 0) {
                 TitleBarView()
                 FilterBarView()
                 Rectangle()
-                    .fill(Color.primary.opacity(0.08))
+                    .fill(idleLook ? IdlePalette.hairline : Color.primary.opacity(0.08))
                     .frame(height: 1)
                 ColumnHeaderView()
                 Rectangle()
-                    .fill(Color.primary.opacity(0.08))
+                    .fill(idleLook ? IdlePalette.hairline : Color.primary.opacity(0.08))
                     .frame(height: 1)
 
                 ZStack {
@@ -41,7 +53,11 @@ struct RootView: View {
             // inner rim (brighter when idle) — visible on any wallpaper.
             ZStack {
                 RoundedRectangle(cornerRadius: Theme.cornerRadius)
-                    .strokeBorder(Color.black.opacity(model.isIdle ? 0.20 : 0.10), lineWidth: 2)
+                    .strokeBorder(
+                        Color.black.opacity(model.isIdle
+                                            ? Theme.idleRingOpacity(colorScheme)
+                                            : 0.10),
+                        lineWidth: 2)
                 RoundedRectangle(cornerRadius: Theme.cornerRadius)
                     .strokeBorder(
                         LinearGradient(
@@ -54,7 +70,7 @@ struct RootView: View {
                         lineWidth: 1.2)
             }
         }
-        .environment(\.widgetIdle, model.isIdle)
+        .environment(\.widgetIdle, idleLook)
         .contextMenu {
             ContextMenuContent(event: nil)
         }
