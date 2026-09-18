@@ -71,6 +71,28 @@ enum PrintCacheTool {
             now: now2, dateRangeDays: 2)
         check("live clock kept as label", clockEvents.first?.timeLabel == "10:00")
 
+        // A live label event adopts the known fixed time of the same event
+        // page from the previous cache (id + time preserved, values fresh).
+        let prev = EconomicEvent(
+            id: "aaaaaaaaaaaa",
+            time: EventParsing.parseISODate("2026-09-18T11:00:00+08:00")!,
+            currency: "JPY", importance: .high, name: "BoJ Interest Rate Decision",
+            actual: nil, forecast: "1.25%", previous: "1.00%",
+            sourceURL: "https://x/boj-165", timeLabel: nil)
+        let liveRow = RawRow(date: "Friday, September 18, 2026", time: "10:00", countryCode: "JP",
+                             bull: 3, name: "BoJ Interest Rate Decision", url: "https://x/boj-165",
+                             actual: "1.25%", forecast: "1.25%", previous: "1.00%")
+        let liveEvents = EventParsing.parseRawRows(
+            [liveRow], fallbackURL: "", currencies: ["JPY"], minImportance: .low,
+            now: now2, dateRangeDays: 2)
+        let stabilized = EventParsing.stabilizeUnscheduledTimes(
+            liveEvents, previous: [prev], fallbackURL: "https://www.investing.com/economic-calendar/")
+        check("live label stabilized to fixed time",
+              stabilized.first?.timeLabel == nil
+                  && stabilized.first.map { Theme.hhmm($0.time) } == "11:00"
+                  && stabilized.first?.id == "aaaaaaaaaaaa"
+                  && stabilized.first?.actual == "1.25%")
+
         if failures > 0 { exit(1) }
         print("All parse tests passed")
     }

@@ -29,9 +29,11 @@ actor CacheStore {
     }
 
     func write(events: [EconomicEvent], fetchedAt: Date) {
+        // Ordering invariant on disk too.
+        let sorted = events.sorted { $0.time < $1.time }
         let envelope = CacheEnvelopeDTO(
             fetched_at: EventParsing.formatISODate(fetchedAt, fractional: true),
-            events: events.map(\.dto)
+            events: sorted.map(\.dto)
         )
         do {
             let encoder = JSONEncoder()

@@ -37,18 +37,22 @@ struct RootView: View {
         }
         .clipShape(RoundedRectangle(cornerRadius: Theme.cornerRadius))
         .overlay {
-            // Glass edge highlight ("凝光"): a bright specular rim, most
-            // visible in the idle widget state — as on native desktop widgets.
-            RoundedRectangle(cornerRadius: Theme.cornerRadius)
-                .strokeBorder(
-                    LinearGradient(
-                        stops: [
-                            .init(color: .white.opacity(model.isIdle ? 0.65 : 0.28), location: 0),
-                            .init(color: .white.opacity(model.isIdle ? 0.10 : 0.05), location: 0.5),
-                            .init(color: .white.opacity(model.isIdle ? 0.45 : 0.16), location: 1),
-                        ],
-                        startPoint: .top, endPoint: .bottom),
-                    lineWidth: 1.2)
+            // Glass edge highlight ("凝光"): dark outer ring + bright specular
+            // inner rim (brighter when idle) — visible on any wallpaper.
+            ZStack {
+                RoundedRectangle(cornerRadius: Theme.cornerRadius)
+                    .strokeBorder(Color.black.opacity(model.isIdle ? 0.20 : 0.10), lineWidth: 2)
+                RoundedRectangle(cornerRadius: Theme.cornerRadius)
+                    .strokeBorder(
+                        LinearGradient(
+                            stops: [
+                                .init(color: .white.opacity(model.isIdle ? 0.75 : 0.32), location: 0),
+                                .init(color: .white.opacity(model.isIdle ? 0.14 : 0.06), location: 0.5),
+                                .init(color: .white.opacity(model.isIdle ? 0.55 : 0.20), location: 1),
+                            ],
+                            startPoint: .top, endPoint: .bottom),
+                        lineWidth: 1.2)
+            }
         }
         .environment(\.widgetIdle, model.isIdle)
         .contextMenu {

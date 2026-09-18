@@ -46,39 +46,25 @@ final class AppModel {
 
     var glassMode: GlassMode
 
-    /// Readable `.regular` glass state, mirroring native desktop widgets:
-    /// regular when the desktop itself is focused (frontmost = Finder with no
-    /// Finder file windows onscreen) or when our panel is key (the user
-    /// clicked it); translucent `.clear` whenever any other app window has
-    /// focus. All text/icons switch to the native widget's white/gray scheme
-    /// in the clear state (`isIdle`).
-    @ObservationIgnored private var panelKey = false
-    @ObservationIgnored private var desktopFocused = false
+    /// Readable `.regular` glass while THIS window is focused (key); the
+    /// translucent native-widget `.clear` look in every other case. Simple as
+    /// that — no desktop-focus heuristics.
+    @ObservationIgnored private var panelFocused = false
     private(set) var isInteracting = false
-
-    /// Notified on every readable↔translucent switch; the AppKit layer uses
-    /// it to show/hide the live NSGlassEffectView card backing (SwiftUI's
-    /// glassEffect snapshots the backdrop in a borderless window and would
-    /// freeze behind-window content — the AppKit material tracks it live).
-    @ObservationIgnored var onInteractingChange: ((Bool) -> Void)?
 
     var isIdle: Bool { !isInteracting }
 
-    func setPanelKey(_ on: Bool) {
-        panelKey = on
-        updateInteraction()
-    }
+    /// Notified on every readable↔translucent switch; the AppKit layer uses
+    /// it to flip the NSGlassEffectView card material.
+    @ObservationIgnored var onInteractingChange: ((Bool) -> Void)?
 
-    func setDesktopFocused(_ on: Bool) {
-        desktopFocused = on
-        updateInteraction()
-    }
-
-    private func updateInteraction() {
+    func setPanelFocused(_ on: Bool) {
+        guard panelFocused != on else { return }
+        panelFocused = on
         withAnimation(.easeInOut(duration: 0.35)) {
-            isInteracting = panelKey || desktopFocused
+            isInteracting = on
         }
-        onInteractingChange?(isInteracting)
+        onInteractingChange?(on)
     }
 
     private var flashTask: Task<Void, Never>?
@@ -103,7 +89,9 @@ final class AppModel {
     }
 
     func applyFetched(events: [EconomicEvent], fetchedAt: Date, reason: ScrollReason = .refresh) {
-        allEvents = events
+        // Ordering invariant: the list and cache are ALWAYS time-sorted,
+        // regardless of what upstream produced.
+        allEvents = events.sorted { $0.time < $1.time }
         self.fetchedAt = fetchedAt
         rebuild(scroll: true, reason: reason)
     }

@@ -23,40 +23,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// is focused or our panel is key; translucent when another app's window
     /// has focus. `didActivateApplication` + panel key notifications drive it.
     private func installFocusObservers() {
+        // State is simply "is THIS window focused": readable glass when key,
+        // translucent widget-look otherwise.
         let center = NotificationCenter.default
         focusObservers.append(center.addObserver(
             forName: NSWindow.didBecomeKeyNotification, object: panel, queue: .main
-        ) { [weak self] _ in self?.model.setPanelKey(true) })
+        ) { [weak self] _ in self?.model.setPanelFocused(true) })
         focusObservers.append(center.addObserver(
             forName: NSWindow.didResignKeyNotification, object: panel, queue: .main
-        ) { [weak self] _ in self?.model.setPanelKey(false) })
-        focusObservers.append(center.addObserver(
-            forName: NSWorkspace.didActivateApplicationNotification, object: nil, queue: .main
-        ) { [weak self] _ in self?.evaluateDesktopFocus() })
-        focusObservers.append(center.addObserver(
-            forName: NSWorkspace.activeSpaceDidChangeNotification, object: nil, queue: .main
-        ) { [weak self] _ in self?.evaluateDesktopFocus() })
-        evaluateDesktopFocus()
-    }
-
-    /// Desktop focused ⟺ Finder is frontmost AND no Finder file window is
-    /// onscreen (the desktop is Finder's "window", but CGWindowList excludes
-    /// desktop elements).
-    private func evaluateDesktopFocus() {
-        let frontmost = NSWorkspace.shared.frontmostApplication
-        let desktopFocused = frontmost?.bundleIdentifier == "com.apple.finder"
-            && !Self.finderFileWindowsOnscreen()
-        model.setDesktopFocused(desktopFocused)
-    }
-
-    private static func finderFileWindowsOnscreen() -> Bool {
-        guard let list = CGWindowListCopyWindowInfo(
-            [.optionOnScreenOnly, .excludeDesktopElements], kCGNullWindowID
-        ) as? [[String: Any]] else { return false }
-        return list.contains { info in
-            (info[kCGWindowOwnerName as String] as? String) == "Finder"
-                && (info[kCGWindowLayer as String] as? Int) == 0
-        }
+        ) { [weak self] _ in self?.model.setPanelFocused(false) })
     }
 
     init(fetchOnce: Bool = false) {
@@ -148,6 +123,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             let backing = NSGlassEffectView(frame: container.bounds)
             backing.style = .clear
             backing.cornerRadius = Theme.cornerRadius
+            backing.wantsLayer = true
+            backing.layer?.masksToBounds = true
+            backing.layer?.cornerRadius = Theme.cornerRadius
             backing.autoresizingMask = [.width, .height]
             container.addSubview(backing)
             glassBacking = backing
@@ -183,9 +161,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     /// Flip the single AppKit glass card backing between materials
     /// (readable `.regular` ↔ translucent widget-style `.clear`).
+    /// The style setter resets cornerRadius — re-apply it every flip, or the
+    /// glass pokes out past the rounded content as straight-corner dark edges.
     private func updateGlassBacking(interacting: Bool) {
         guard let glassBacking, model.glassMode == .glass else { return }
         glassBacking.style = interacting ? .regular : .clear
+        glassBacking.cornerRadius = Theme.cornerRadius
+        glassBacking.wantsLayer = true
+        glassBacking.layer?.masksToBounds = true
+        glassBacking.layer?.cornerRadius = Theme.cornerRadius
     }
 
     private func observeReduceTransparency() {

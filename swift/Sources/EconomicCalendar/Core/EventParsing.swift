@@ -167,6 +167,45 @@ enum EventParsing {
         return start <= event.time && event.time <= horizon
     }
 
+    /// Live time-cell states (countdown "30m", ticking clock "13:15") are
+    /// transient — but we persist them, so the displayed time churns every
+    /// fetch. When a fresh label event matches a previously-seen FIXED-time
+    /// event (same event page = same non-fallback source_url), adopt the
+    /// known scheduled time and id (id stability keeps notified.json dedup
+    /// valid) while taking the fresh actual/forecast/previous values.
+    /// Output is re-sorted; caller-provided order is not preserved.
+    static func stabilizeUnscheduledTimes(
+        _ fetched: [EconomicEvent],
+        previous: [EconomicEvent],
+        fallbackURL: String
+    ) -> [EconomicEvent] {
+        guard !previous.isEmpty else { return fetched }
+        let fixed = previous.filter { $0.timeLabel == nil }
+        guard !fixed.isEmpty else { return fetched }
+        let merged = fetched.map { event -> EconomicEvent in
+            // Rows without their own link share the fallback URL — matching
+            // on it would graft someone else's time onto them.
+            guard event.timeLabel != nil,
+                  !event.sourceURL.isEmpty,
+                  event.sourceURL != fallbackURL,
+                  let known = fixed.first(where: { $0.sourceURL == event.sourceURL })
+            else { return event }
+            return EconomicEvent(
+                id: known.id,
+                time: known.time,
+                currency: event.currency,
+                importance: event.importance,
+                name: event.name,
+                actual: event.actual,
+                forecast: event.forecast,
+                previous: event.previous,
+                sourceURL: event.sourceURL,
+                timeLabel: nil
+            )
+        }
+        return merged.sorted { $0.time < $1.time }
+    }
+
     /// Port of `_parse_row` + fetch-time filtering + time sort.
     /// Rows whose time cell is not a plain clock time ("All Day", "Tentative",
     /// live countdowns like "30m") keep the site's wording in `timeLabel` and

@@ -85,8 +85,11 @@ final class RefreshScheduler {
                 model.applyFetched(events: [], fetchedAt: Date())
             }
         } else {
-            await cache.write(events: result.events, fetchedAt: Date())
-            model.applyFetched(events: result.events, fetchedAt: Date())
+            let previous = await cache.read()?.events ?? []
+            let events = EventParsing.stabilizeUnscheduledTimes(
+                result.events, previous: previous, fallbackURL: config.sourceURL)
+            await cache.write(events: events, fetchedAt: Date())
+            model.applyFetched(events: events, fetchedAt: Date())
         }
 
         await checkNotifications()

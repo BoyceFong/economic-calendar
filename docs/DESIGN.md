@@ -95,15 +95,11 @@ Economic Calendar 是一个 **macOS 桌面经济日历小组件**：以浮层卡
 
 遵循 HIG「节制使用」：玻璃只给**功能层**——卡片底、筛选 chips、时间胶囊；列表行永不上玻璃（55 行玻璃 = 渲染灾难 + 注意力灾难）。
 
-**交互态透明**（对齐原生桌面 widget 的驱动语义）：是否透明**跟随系统焦点**，与鼠标位置无关 —
+**交互态透明**：唯一驱动信号是**本窗口是否聚焦**（`didBecomeKey/didResignKey`；面板 `becomesKeyOnlyIfNeeded = false`，点击即变 key 但不激活 app）——聚焦 = 可读 `.regular`，失焦 = 透明 widget 态 `.clear`。不做桌面聚焦/前台应用启发式（试过，Finder 在 CGWindowList 里的桌面杂音窗口会让判定极不可靠）。
 
-- 桌面本身聚焦（frontmost = Finder 且无 Finder 文件窗口在屏，`CGWindowList` 排除桌面元素后为空）→ 可读态
-- 其他任何应用窗口聚焦 → 透明态
-- 点击日历窗口自己 → 面板变 key（`becomesKeyOnlyIfNeeded = false`，仍不激活 app）→ 可读态
+**材质实现的关键坑（两次踩坑）**：① SwiftUI `.glassEffect` 在透明无边框窗口里对窗外内容是**快照式采样** —— 可读态用它背景"冻住"不跟随壁纸；② 即便闲置态用 `Glass.clear`，只要用 `if/else` 分支切换玻璃视图，**销毁重建后的 glassEffect 不再初始化背景采样**，透明凝光态一次交互后就回不来了。最终方案：卡片两态共用**一块** AppKit `NSGlassEffectView`（系统 widget 同源、活体采样），只切 `style`（可读 `.regular` ↔ 透明 `.clear`，经 `onInteractingChange` 回调驱动），SwiftUI 层不画任何卡片玻璃。注意：**`style` 的 setter 会重置 `cornerRadius`**，每次切换后必须重设圆角（配合 `wantsLayer`+`masksToBounds`），否则方形玻璃直角会从圆角内容后露出。
 
-**材质实现的关键坑（两次踩坑）**：① SwiftUI `.glassEffect` 在透明无边框窗口里对窗外内容是**快照式采样** —— 可读态用它背景"冻住"不跟随壁纸；② 即便闲置态用 `Glass.clear`，只要用 `if/else` 分支切换玻璃视图，**销毁重建后的 glassEffect 不再初始化背景采样**，透明凝光态一次交互后就回不来了。最终方案：卡片两态共用**一块** AppKit `NSGlassEffectView`（系统 widget 同源、活体采样），只切 `style`（可读 `.regular` ↔ 透明 `.clear`，经 `onInteractingChange` 回调驱动），SwiftUI 层不画任何卡片玻璃。
-
-透明态完整复刻 widget 视觉：全部文字/图标切换为白灰色系（环境键 `widgetIdle` 驱动，各视图前景色随动），卡片边缘叠加一圈顶亮底弱的**凝光高亮描边**。切换用 `withAnimation` 0.35s 过渡，两种外观自动适配。
+透明态完整复刻 widget 视觉：全部文字/图标切换为白灰色系（环境键 `widgetIdle` 驱动，各视图前景色随动），卡片边缘叠加"外暗内亮"双环**凝光描边**（任何壁纸上可见）。切换用 `withAnimation` 0.35s 过渡，两种外观自动适配。
 
 三级降级链（`GlassMode`）：
 
@@ -137,14 +133,16 @@ investing.com 表格的时间格**不是静态文本**，实测有四种状态�
 | 实时时钟 | 等于抓取时刻（进行中事件） | 解析结果 ≈ 抓取分钟 → 判定为活体时钟，保留原文为 `timeLabel` |
 | 未定档 | `All Day` / `Tentative` | 同上，置当日顶部 |
 
-旧版（Python 与首版 Swift 均如此）对一切非 `HH:MM` 文本**静默吞成当日 00:00**，制造出假午夜事件 —— BoJ 决议曾被记到 00:00 并可能触发错误的"即将开始"通知。修复后契约：
+旧版（Python 与首版 Swift 均如此）对一切非 `HH:MM` 文本**静默吞成当日 00:00**，制造出假午夜事件 —— BoJ 决议曾被记到 00:00。修复后契约：
 
 1. 解析只接受全串锚定的 `H:MM(AM/PM)?`（拒绝 `30m`、`All Day`、`10:15:42` 时钟带秒）；
 2. 非固定时间的行显示**站点原文**（`EconomicEvent.timeLabel`），绝不编造时间；
 3. `timeLabel` 事件按当日 00:00 排序（对齐 investing.com 的日顶部摆放）、**跳过通知**（无可靠时刻）；
-4. 事件 ID 仍用页面原始时间文本哈希 —— 与既有行为兼容。
+4. 事件 ID 仍用页面原始时间文本哈希 —— 与既有行为兼容；
+5. **跨轮稳定**：倒计时/时钟标签每轮都在变，直接落盘会让时间与 ID 每轮漂移（"列表一拉就乱"的根源）。`stabilizeUnscheduledTimes` 会把本轮 label 事件与上一轮缓存中同 `source_url` 的**固定时间**版本匹配（回退 URL 除外——无链接行共享日历首页 URL，会张冠李戴），命中则沿用旧的固定时间与 ID、只更新数值；命中不了（事件首次出现/真 All Day）才保留标签。每轮匹配失败会持续到站点稳定出固定时间为止，与站点逐字对齐；
+6. **排序不变量三重收口**：`parseRawRows` 排序 + `stabilizeUnscheduledTimes` 输出排序 + `CacheStore.write`/`applyFetched` 落盘上屏前再排序 —— 无论上游发生什么，存储与展示必为时间升序。
 
-回归断言在 `--parse-test`（13 项，含 All Day/倒计时/时钟三种活体状态）。
+回归断言在 `--parse-test`（14 项，含 All Day/倒计时/时钟/跨轮稳定化）。
 
 ### 3.4 自动滚动策略
 
